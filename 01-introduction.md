@@ -40,14 +40,47 @@ Airflow is NOT a data streaming solution, nor a data processing framework. If yo
 Typically, you have spark to process your data, and you use airflow to trigger the spark job that processes your data, but you don't process your data in airflow. 
 
 ## How Airflow works?
+One node architecture. There are 4 components within this node: Web server, Scheduler, Metastore, Executor. 
 
+In this architecture, the Web server fetches some metadata from the meta database of Airflow, to display information corresponding to your DAGs, your task instances, or your users in the user interface. Next, the Scheduler interacts with the meta database and th executor to trigger your DAGs. Finally, the executor interacts with the meta database to update the tasks that have been completed. 
 
+The executor has an internal queue, which is part of the executor. This ensures the tasks are executed in the right order. 
 
+By default, you get the sequential executor to execute your tasks, one after the other. When you scale up Airflow, you can use the local executor, where your tasks are executed in subprocesses with both executors. 
 
-## The little secret of the webserver and the scheduler
+To execute as many tasks as you want, you need a different architecture - the multi-node architecture. This is usually done with Celery, which is a way to process your tasks on multiple machines. It looks like this:
+- Node 1: Web server, Scheduler, Executor. 
+- Node 2: Metastore, Queue
+- Worker Nodes 1, 2, 3, ..., each machine holds an Airflow Worker. 
 
+Note that in Node 2, the queue is external to the Executor. You will have Redis or RabbitMQ, so that you can spread your tasks among multiple machines. 
 
+The process is slightly different compared with the single node architecture - The Executor pushes the tasks into the queue, 
 
+Redis is an open source (BSD licensed), in-memory data structure store, used as a database, cache, and message broker. Once the tasks are in the queue, they are ready to be pulled by the Workers. 
+
+What happens when a DAG is triggered. Assume you have a new DAG in your Dags folder, called "dag.py". 
+1. Once the DAG is in the folder, both the Scheduler and the Web Server will parse the DAG. 
+2. Then, the Scheduler will verify if the DAG is ready to be triggered. If so, a DAG object (an instance of your DAG running at a given time) is created, which is stored in the database of Airflow, with the status of "running". 
+3. If there is a task ready to be triggered in the DAG, the Scheduler creates a task instance object, which is stored in the meta database as with a status of "scheduled". 
+4. The Scheduler then sends the task instance object to the Executor, and its status is updated to "queued". 
+5. Once the Executor is ready to run the task, the task instance will have the status of "running". When the task completes, its status is updated again. 
+6. Finally, the scheduler verifies if the task is done, an if there is no more task need to execute. If so, the DAG object has the status of "completed". 
+7. The Web Server updates the UI, so each time you refresh the UI, you get the latest information. 
+
+## The little secret of the web server and the scheduler
+both the Web Server and Scheduler parse your DAGs. You can configure this parsing process with different configuration settings.
+
+With the Scheduler:
+- `min_file_process_interval`. Number of seconds after which a DAG file is parsed. The DAG file is parsed every min_file_process_interval number of seconds. Updates to DAGs are reflected after this interval.
+- `dag_dir_list_interval`. How often (in seconds) to scan the DAGs directory for new files. Default to 5 minutes.
+
+Which means you have to wait up to 5 minutes before your DAG gets detected by the scheduler, and then it is parsed every 30 seconds by default.
+
+With the Web Server:
+- `worker_refresh_interval`. Number of seconds to wait before refreshing a batch of workers. 30 seconds by default. Which means every 30 seconds, the web server parses for new DAG in your DAG folder.
+
+Remember: By default, when you add a new DAG you will have to wait up to 5 minutes before getting your DAG on the UI and then if you modify it, you will have to wait up to 30 seconds before getting your DAG updated.
 
 ## Installing Airflow
 
