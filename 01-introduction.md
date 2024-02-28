@@ -84,7 +84,37 @@ Remember: By default, when you add a new DAG you will have to wait up to 5 minut
 
 ## Installing Airflow
 
+```console
+# first, make sure Docker Desktop is installed, 
+# and that the app is opened and running. 
 
+# start a Docker container, with Python 3.8 installed
+# execute a bash session in the container, 
+# so you can interact with it from your machine
+# the port 8080 of the container is binded with the port 8080 of the machine,
+# so you can reach the UI of airflow inside the Docker container
+docker run -it --rm -p 8080:8080 python:3.8-slim /bin/bash
+
+# below commands are executed inside the container: 
+
+root@470fefdbb331:/# ls
+bin   dev  home  media  opt   root  sbin  sys  usr
+boot  etc  lib   mnt    proc  run   srv   tmp  var
+
+root@470fefdbb331:/# python --version
+Python 3.8.18
+
+# export an env var, specifying where Airflow should be installed,
+# and where it will generate its files/folders it needs. 
+root@470fefdbb331:/# export AIRFLOW_HOME=/usr/local/airflow
+
+
+
+
+
+
+
+```
 
 
 ## Quick tour of Airflow UI
