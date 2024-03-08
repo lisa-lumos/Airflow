@@ -354,42 +354,64 @@ The "Grantt" view shows how long each task took to run, and in which order. It i
 The "Code" view. Can be used to make sure the modifications you made to your DAG has been applied to your airflow instance. 
 
 ## Quick tour of Airflow CLI
+With the cli, you can interact with a lot of things, such as you DAGs, task instances, diagrams, etc. 
 
+For some commands, you have to used the cli to execute them - you cannot do it from the UI. For example, if you want to backfill your DAG, trigger all the non-triggered diagrams, even if the backfilling process is disabled. 
 
+```console
+lisa@mac16 ~/D/airflow-docker> docker ps
+CONTAINER ID   IMAGE           COMMAND            CREATED      STATUS      PORTS                    NAMES
+7e99f8163618   airflow-basic   "/entrypoint.sh"   8 days ago   Up 8 days   0.0.0.0:8080->8080/tcp   eager_diffie
 
+# open a bsh session inside the Docker container of Airflow
+lisa@mac16 ~/D/airflow-docker> docker exec -it 7e99f8163618 /bin/bash 
 
+# see helps
+# note that airflow commands are grouped
+# depends on the resource you want to interact with
+airflow@7e99f8163618:~$ airflow -h
 
+# initialize the metadata base, generate needed files/folders for Airflow
+airflow@7e99f8163618:~$ airflow db init
 
+# The "airflow db reset" cmd deletes all metadata. Should never use it in prod. 
+# The "airflow db upgrade" cmd updates the airflow version.  
 
+# The "airflow webserver" starts the airflow webserver.  
+# The "airflow scheduler" starts the airflow scheduler.  
+# The "airflow celery worker" declares this machine as an airflow worker, start it.  
 
+# list every DAG, show its path, owner, and paused status
+# useful if you created a new DAG, and confirm whether airflow is aware of it. 
+airflow@7e99f8163618:~$ airflow dags list
 
+# trigger a dag run for a particular date
+airflow@7e99f8163618:~$ airflow dags trigger example_bash_operator -e 2024-03-08
 
+# see run history of a dag
+airflow@7e99f8163618:~$ airflow dags list-runs -d example_bash_operator
 
+# can be used to execute all the non-trigger dag runs between a time span specified. 
+# the --reset-dagruns will force the already triggered dags in the past to re-run
+airflow@7e99f8163618:~$ airflow dags backfill
 
+# list all the tasks in a dag
+# use case: you added a new task in an existing DAG, and
+#           you need to make sure Airflow is aware of it. 
+airflow@7e99f8163618:~$ airflow tasks list example_bash_operator
 
+# Best practice: 
+# Each time you add a new task to your dag,
+# make sure that the task works, with this command. 
+# This will run a task without checking for dependencies,
+# nor recording its state in the database. 
+# the parameters are: dag name, task name, run date
+airflow@7e99f8163618:~$ airflow tasks test example_bash_operator runme_0 2024-03-07
 
+# exit from the container
+airflow@7e99f8163618:~$ exit
 
+# Stop the Airflow docker container
+lisa@mac16 ~/D/airflow-docker> docker stop 7e99f8163618
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
