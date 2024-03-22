@@ -17,7 +17,7 @@ All 3 of the containers will share the same network, so they can communicate wit
 In the "docker-compose.yml" file, it specifies the postgres "dockerfile" location and container name, and the airflow "dockerfile" location and container name, etc. It also specifies the port-to-port and folder-to-folder bindings. 
 
 ## Docker performances
-
+In docker settings, under Resources pane, make sure at least 6-8 GB of memory is allocated. Also, always make sure to update it. 
 
 ## Project: The Forex Data Pipeline
 
