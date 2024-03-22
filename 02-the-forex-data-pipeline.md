@@ -14,20 +14,7 @@ The docker compose file is a yml file, describing the services you run for your 
 
 All 3 of the containers will share the same network, so they can communicate with each other. 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+In the "docker-compose.yml" file, it specifies the postgres "dockerfile" location and container name, and the airflow "dockerfile" location and container name, etc. It also specifies the port-to-port and folder-to-folder bindings. 
 
 ## Docker performances
 
