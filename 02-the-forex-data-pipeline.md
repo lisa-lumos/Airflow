@@ -19,8 +19,22 @@ In the "docker-compose.yml" file, it specifies the postgres "dockerfile" locatio
 ## Docker performances
 In docker settings, under Resources pane, make sure at least 6-8 GB of memory is allocated. Also, always make sure to update it. 
 
-## Project: The Forex Data Pipeline
+## Project: The Forex (Foreign Exchange) Data Pipeline
+The Euro fluctuates against the USD. 
 
+Flow of the Forex data pipeline:
+1. Check availability of Forex rates url
+2. Check the availability of the file having currencies to watch
+3. Download forex rates with Python
+4. Save the forex rates in HDFS
+5. Create a Hive table to store forex rates from the HDFS
+6. Process forex rates with Spark
+7. Sent a Email notification
+8. Send a Slack notification
+
+Hive allows you to interact with the HDFS files, using SQL syntax.
+
+Hue allows you to have a dashboard to check the data in Hive and HDFS. 
 
 ## A bit more about the architecture
 
