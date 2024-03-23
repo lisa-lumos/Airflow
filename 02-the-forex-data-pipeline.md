@@ -37,10 +37,10 @@ Hive allows you to interact with the HDFS files, using SQL syntax.
 Hue allows you to have a dashboard to check the data in Hive and HDFS. 
 
 ## A bit more about the architecture
+skipped. 
 
-
-## What is a DAG?
-
+## What is a DAG (Directed Acyclic Graph)?
+In airflow, a dag is a data pipeline. Each node in a dag is a task. The edges are dependencies between the tasks. There are no loops in a dag. 
 
 ## [Practice] Define your DAG
 
