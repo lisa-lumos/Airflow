@@ -39,43 +39,93 @@ Hue allows you to have a dashboard to check the data in Hive and HDFS.
 ## A bit more about the architecture
 skipped. 
 
-## What is a DAG (Directed Acyclic Graph)?
+## Definitions
+### DAG
 In airflow, a dag is a data pipeline. Each node in a dag is a task. The edges are dependencies between the tasks. There are no loops in a dag. 
 
-## [Practice] Define your DAG
+### Operator
+An operator is a task.
+
+For example, you have a dag which contains 3 tasks
+1. Execute a Python function, using PythonOperator
+2. Execute a Bash command, using BashOperator
+3. Execute a SQL request, using PostgresOperator
+
+3 types of operators:
+1. Action operators, allow you do execute something, like PythonOperator. 
+2. Transfer operators, allow you to transfer data from source to destination, like Postgres to MYSQL operator. 
+3. Sensor operators, allow you to wait for something to happen, before moving to the next task, like waiting for a file to land at a specific location in the file system. By default, it checks every 1min. 
+
+## Define your DAG
+In the folder "02-airflow-docker-files/mnt/airflow/dags", create a new file "forex_data_pipeline.py":
+```py
+from airflow import DAG
+from datetime import datetime, timedelta
+
+# see a list of providers here:
+# https://airflow.apache.org/docs/apache-airflow-providers/packages-ref.html
+from airflow.providers.http.sensors.http import HttpSensor
+
+# create a default args dict
+default_args = {
+  "owner": "airflow", # the owner of all the tasks in the dag
+  "email_on_failure": False, 
+  "email_on_retry": False,
+  "email": "admin@email.com", # if emails enabled, the target email address
+  "retries": 1, # if task fails, will be retried once, before being announced as failure
+  "retry_delay": timedelta(minutes=5) # wait 5min before retrying
+}
+
+# this dag will be triggered daily at midnight
+with DAG(
+  "forex_data_pipeline",            # the dag id, need to be unique across all dags
+  start_date=datetime(2024, 3, 25), # when the dag will be scheduled
+  schedule_interval="@daily",       # how often the dag will be triggered, takes CRON
+  default_args=default_args,        # args for the tasks in the dag
+  catchup=False                     # cannot run all the non triggered dag runs,
+                                    # between start date and today
+) as dag: 
+  is_forex_rates_available = HttpSensor(
+    task_id='is_forex_rates_available', # must be unique in this dag
+    http_conn_id='forex_api',
+    endpoint="marclamberti/f45f872dea4dfd3eaa015a4a1af4b39b", # after host name
+    response_check=lambda response: "rates" in response.text, # if rates in response
+    poke_interval=5, # check every 5 secs
+    timeout=20 # if 20 secs later, still not available, then task ends in failure, should always specify it, as a best practice
+  )
+
+```
 
 
-## What is an Operator?
+
+## Check if the API is available - HttpSensor
 
 
-## [Practice] Check if the API is available - HttpSensor
+## Check if the currency file is available - FileSensor
 
 
-## [Practice] Check if the currency file is available - FileSensor
+## Download the forex rates from the API - PythonOperator
 
 
-## [Practice] Download the forex rates from the API - PythonOperator
+## Save the forex rates into HDFS - BashOperator
 
 
-## [Practice] Save the forex rates into HDFS - BashOperator
+## Create the Hive table forex_rates - HiveOperator
 
 
-## [Practice] Create the Hive table forex_rates - HiveOperator
+## Process the forex rates with Spark - SparkSubmitOperator
 
 
-## [Practice] Process the forex rates with Spark - SparkSubmitOperator
+## Send email notifications - EmailOperator
 
 
-## [Practice] Send email notifications - EmailOperator
+## Send Slack notifications - SlackWebhookOperator
 
 
-## [Practice] Send Slack notifications - SlackWebhookOperator
+## Add dependencies between tasks
 
 
-## [Practice] Add dependencies between tasks
-
-
-## [Practice] The Forex Data Pipeline in action!
+## The Forex Data Pipeline in action!
 
 
 
