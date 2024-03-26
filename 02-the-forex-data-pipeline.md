@@ -96,7 +96,49 @@ with DAG(
 
 ```
 
+Navigate to "02-airflow-docker-files" folder, 
+```console
+# takes a while for first time
+./start.sh
 
+# make sure all containers show healthy
+docker ps
+CONTAINER ID   IMAGE                                    COMMAND                  CREATED         STATUS                   PORTS                                                                         NAMES
+5b9dc58e836d   02-airflow-docker-files-hue              "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:32762->8888/tcp                                                       hue
+45b03324f6f5   02-airflow-docker-files-hive-webhcat     "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   10000-10002/tcp, 50111/tcp                                                    hive-webhcat
+c2d0aae51cb8   02-airflow-docker-files-hive-server      "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   10001/tcp, 0.0.0.0:32760->10000/tcp, 0.0.0.0:32759->10002/tcp                 hive-server
+9931cb19c200   02-airflow-docker-files-livy             "./entrypoint"           2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:32758->8998/tcp                                                       livy
+e8631e3291ef   02-airflow-docker-files-hive-metastore   "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   10000-10002/tcp, 0.0.0.0:32761->9083/tcp                                      hive-metastore
+7aad3af3036c   02-airflow-docker-files-spark-worker     "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   10000-10002/tcp, 0.0.0.0:32764->8081/tcp                                      02-airflow-docker-files-spark-worker-1
+45e5e1b15283   02-airflow-docker-files-datanode         "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   9864/tcp                                                                      datanode
+2125a82cd267   02-airflow-docker-files-postgres         "docker-entrypoint.s…"   2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:32769->5432/tcp                                                       postgres
+498068701c6d   02-airflow-docker-files-spark-master     "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   6066/tcp, 10000-10002/tcp, 0.0.0.0:32765->7077/tcp, 0.0.0.0:32766->8082/tcp   spark-master
+d982e1fe3227   02-airflow-docker-files-namenode         "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:32763->9870/tcp                                                       namenode
+681b9e46e905   02-airflow-docker-files-airflow          "./entrypoint.sh ./s…"   2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:8080->8080/tcp, 10000-10002/tcp                                       airflow
+2c48698f7db6   wodby/adminer:latest                     "/entrypoint.sh php …"   2 minutes ago   Up 2 minutes (healthy)   0.0.0.0:32767->9000/tcp                                                       adminer
+```
+
+Then, go to `http://localhost:8080/` in the browser, and use airflow as both username and pwd to login. 
+
+In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the dag) forex_api; Conn Type: HTTP; Host: https://gist.github.com/ -> Save. 
+
+In the command line: 
+```console
+# copy the container id of airflow from below
+docker ps
+
+# run the bash session in the airflow container
+docker exec -it 681b9e46e905 /bin/bash
+
+# test the first task in the dag before running the dag
+# should see "Marking task as SUCCESS"
+# always test the tasks in a dag before running the dag
+airflow tasks test forex_data_pipeline is_forex_rates_available 2024-01-01
+...
+[2024-03-26 03:47:08,656] {http.py:140} INFO - Sending 'GET' to url: https://gist.github.com/marclamberti/f45f872dea4dfd3eaa015a4a1af4b39b
+[2024-03-26 03:47:09,264] {base.py:248} INFO - Success criteria met. Exiting.
+[2024-03-26 03:47:09,274] {taskinstance.py:1219} INFO - Marking task as SUCCESS. dag_id=forex_data_pipeline, task_id=is_forex_rates_available, execution_date=20240101T000000, start_date=20240326T034612, end_date=20240326T034709
+```
 
 ## Check if the API is available - HttpSensor
 
