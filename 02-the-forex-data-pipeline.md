@@ -68,6 +68,11 @@ from airflow.sensors.http_sensor import HttpSensor
 from airflow.sensors.filesystem import FileSensor
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.bash_operator import BashOperator
+from airflow.providers.apache.hive.operators.hive import HiveOperator
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.operators.email import EmailOperator
+from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
+
 
 import csv
 import requests
@@ -75,12 +80,12 @@ import json
 
 # create a default args dict
 default_args = {
-  "owner": "airflow", # the owner of all the tasks in the dag
-  "email_on_failure": False, 
-  "email_on_retry": False,
-  "email": "admin@email.com", # if emails enabled, the target email address
-  "retries": 1, # if task fails, will be retried once, before being announced as failure
-  "retry_delay": timedelta(minutes=5) # wait 5min before retrying
+    "owner": "airflow", # the owner of all the tasks in the dag
+    "email_on_failure": False, 
+    "email_on_retry": False,
+    "email": "admin@email.com", # if emails enabled, the target email address
+    "retries": 1, # if task fails, will be retried once, before being announced as failure
+    "retry_delay": timedelta(minutes=5) # wait 5min before retrying
 }
 
 # Download forex rates according to the currencies we want to watch
@@ -117,67 +122,146 @@ def download_rates():
                 outfile.write('\n')
 
 
+def _get_message() -> str:
+    return "Hi from forex_data_pipeline"
+
 # this dag will be triggered daily at midnight
 with DAG(
-  "forex_data_pipeline",            # the dag id, need to be unique across all dags
-  start_date=datetime(2024, 3, 25), # when the dag will be scheduled
-  schedule_interval="@daily",       # how often the dag will be triggered, takes CRON
-  default_args=default_args,        # args for the tasks in the dag
-  catchup=False                     # cannot run all the non triggered dag runs,
-                                    # between start date and today
+    "forex_data_pipeline",            # the dag id, need to be unique across all dags
+    start_date=datetime(2024, 3, 25), # when the dag will be scheduled
+    schedule_interval="@daily",       # how often the dag will be triggered, takes CRON
+    default_args=default_args,        # args for the tasks in the dag
+    catchup=False                     # cannot run all the non triggered dag runs,
+                                        # between start date and today
 ) as dag: 
   
-  # Check if the API is available - HttpSensor
-  # the url to check is:
-  # https://gist.github.com/marclamberti/f45f872dea4dfd3eaa015a4a1af4b39b
-  is_forex_rates_available = HttpSensor(
-    task_id='is_forex_rates_available', # must be unique in this dag
-    http_conn_id='forex_api',
-    endpoint="marclamberti/f45f872dea4dfd3eaa015a4a1af4b39b", # after host name
-    response_check=lambda response: "rates" in response.text, # if rates in response
-    poke_interval=5, # check every 5 secs
-    timeout=20 # if 20 secs later, still not available, then task ends in failure, should always specify it, as a best practice
-  )
+    # Check if the API is available - HttpSensor
+    # the url to check is:
+    # https://gist.github.com/marclamberti/f45f872dea4dfd3eaa015a4a1af4b39b
+    is_forex_rates_available = HttpSensor(
+        task_id='is_forex_rates_available', # must be unique in this dag
+        http_conn_id='forex_api',
+        endpoint="marclamberti/f45f872dea4dfd3eaa015a4a1af4b39b", # after host name
+        response_check=lambda response: "rates" in response.text, # if rates in response
+        poke_interval=5, # check every 5 secs
+        timeout=20 # if 20 secs later, still not available, then task ends in failure, should always specify it, as a best practice
+    )
 
-  # Check if the currency file is available - FileSensor
-  # checks every 1 min to see if a file/folder exist 
-  # in a specific location, in the file system
-  # Apache Airflow documentation -> References -> Python API -> 
-  # Operators packages -> airflow.sensors -> airflow.sensors.filesystem
-  # It checks this file: /opt/airflow/dags/files/forex_currencies.csv
-  # and maps to this in the local machine: mnt/airflow/dags/files/forex_currencies.csv
-  is_forex_currencies_file_available = FileSensor(
-    task_id="is_forex_currencies_file_available",
-    fs_conn_id="forex_path",
-    filepath="forex_currencies.csv",
-    poke_interval=5,
-    timeout=20
-  )
+    # Check if the currency file is available - FileSensor
+    # checks every 1 min to see if a file/folder exist 
+    # in a specific location, in the file system
+    # Apache Airflow documentation -> References -> Python API -> 
+    # Operators packages -> airflow.sensors -> airflow.sensors.filesystem
+    # It checks this file: /opt/airflow/dags/files/forex_currencies.csv
+    # and maps to this in the local machine: mnt/airflow/dags/files/forex_currencies.csv
+    is_forex_currencies_file_available = FileSensor(
+        task_id="is_forex_currencies_file_available",
+        fs_conn_id="forex_path",
+        filepath="forex_currencies.csv",
+        poke_interval=5,
+        timeout=20
+    )
 
-  # Apache Airflow documentation -> References -> Python API -> 
-  # Operators packages -> airflow.operators -> airflow.operators.python
-  downloading_rates = PythonOperator(
-    task_id="downloading_rates",
-    python_callable=download_rates
-  )
+    # Apache Airflow documentation -> References -> Python API -> 
+    # Operators packages -> airflow.operators -> airflow.operators.python
+    downloading_rates = PythonOperator(
+        task_id="downloading_rates",
+        python_callable=download_rates
+    )
 
-  # Assume the output file is huge, 
-  # so you need to put this file in a distributed file system, 
-  # such as a HDFS
-  # In the browser, go to http://localhost:32762
-  # This takes you to HUE, to access the HDFS
-  # use "root" for both username and pwd
-  # Click on Files icon in the left bar
-  # go to root, and see the files/folders in the HDFS
-  # test this task, then refresh this browser page,
-  # should see /forex/forex_rates.json
-  saving_rates = BashOperator(
-    task_id="saving_rates",
-    bash_command="""
-      hdfs dfs -mkdir -p /forex && \
-      hdfs dfs -put -f $AIRFLOW_HOME/dags/files/forex_rates.json /forex
-    """
-  )
+    # Assume the output file is huge, 
+    # so you need to put this file in a distributed file system, 
+    # such as a HDFS
+    # In the browser, go to http://localhost:32762
+    # This takes you to HUE, to access the HDFS
+    # use "root" for both username and pwd
+    # Click on Files icon in the left bar
+    # go to root, and see the files/folders in the HDFS
+    # test this task, then refresh this browser page,
+    # should see /forex/forex_rates.json
+    saving_rates = BashOperator(
+        task_id="saving_rates",
+        bash_command="""
+        hdfs dfs -mkdir -p /forex && \
+        hdfs dfs -put -f $AIRFLOW_HOME/dags/files/forex_rates.json /forex
+        """
+    )
+
+    # create a table on top of the file, with Hive
+    # to be able to query it, using hql (like sql)
+    # documentation -> Providers packages -> Apache Hive -> Python API
+    # -> airflow.providers.apache.hive.operators.hive
+    # to check for tables, go to Hue, and default -> refresh
+    # to query it, go to Editor, run "select * from forex_rates"
+    # This step creates an empty table in Hive. 
+    creating_forex_rates_table = HiveOperator(
+        task_id="creating_forex_rates_table",
+        hive_cli_conn_id="hive_conn",
+        hql="""
+            CREATE EXTERNAL TABLE IF NOT EXISTS forex_rates(
+                base STRING,
+                last_update DATE,
+                eur DOUBLE,
+                usd DOUBLE,
+                nzd DOUBLE,
+                gbp DOUBLE,
+                jpy DOUBLE,
+                cad DOUBLE
+                )
+            ROW FORMAT DELIMITED
+            FIELDS TERMINATED BY ','
+            STORED AS TEXTFILE
+        """
+    )
+
+    # Airflow is an orchestrator, not a processing framework, 
+    # so you should not process TBs of data in Airflow.
+    # Instead, you should trigger a Spark job,
+    # where the processing of TBs of data is done. 
+    # documentation -> Providers packages -> Apache Spark -> Python API
+    # -> airflow.providers.apache.spark.operators.spark_submit
+    # After testing this task, should see the table now have 2 rows
+    forex_processing = SparkSubmitOperator(
+        task_id="forex_processing",
+        application="/opt/airflow/dags/scripts/forex_processing.py", # the path of the python file that Spark need to execute
+        conn_id="spark_conn",
+        verbose=False # avoid excessive logs
+    )
+
+    # you need to first configure your email provider,
+    # to be able to send an email from the data pipeline,
+    # by using your email address. 
+    # For GMail, this url: https://security.google.com/settings/security/apppasswords
+    # Give an app name, such as "airflow", 
+    # then get the app pwd: ryxh kqla abzl pzgy
+    # then, go to "mnt/airflow/dags/airflow.cfg" to update config for airflow
+    # search for "smtp", and update the settings. 
+
+    # send_email_notification = EmailOperator(
+    #     task_id="send_email_notification",
+    #     to="your-receipient-email@gmail.com", # the recipient email address
+    #     subject="forex_data_pipeline",
+    #     html_content="<h3>forex_data_pipeline</h3>"
+    # )
+
+
+    # send_slack_notification = SlackWebhookOperator(
+    #     task_id="send_slack_notification",
+    #     http_conn_id="slack_conn",
+    #     message=_get_message(),
+    #     channel="#monitoring"
+    # )
+
+    # one way to set dependencies
+    # is_forex_rates_available.set_downstream(is_forex_currencies_file_available)
+    # is_forex_currencies_file_available.set_upstream(is_forex_rates_available)
+
+    # cleaner way to set dependencies
+    # but if the task chain is long, can break into several lines
+    is_forex_rates_available >> is_forex_currencies_file_available >> downloading_rates >> saving_rates 
+    saving_rates >> creating_forex_rates_table >> forex_processing
+    # forex_processing >> send_email_notification >> send_slack_notification 
+
 ```
 
 Navigate to "02-airflow-docker-files" folder, 
@@ -204,11 +288,41 @@ d982e1fe3227   02-airflow-docker-files-namenode         "./entrypoint.sh ./s…"
 
 Then, go to `http://localhost:8080/` in the browser, and use airflow as both username and pwd to login. 
 
-In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) forex_api; Conn Type: HTTP; Host: https://gist.github.com/ -> Save. 
+Create the http connection. In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) forex_api; Conn Type: HTTP; Host: https://gist.github.com/ -> Save. 
 
-In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) forex_path; Conn Type: File (path); Extra: {"path": "/opt/airflow/dags/files"} -> Save. 
+Create the file connection. In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) forex_path; Conn Type: File (path); Extra: {"path": "/opt/airflow/dags/files"} -> Save. 
 
-In the command line: 
+Create the Hive connection. In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) hive_conn; Conn Type: Hive Server 2 Thrift; Host: hive-server; Login: hive; Password: hive; Port: 10000 -> Save. 
+
+Create the Spark connection. In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) spark_conn; Conn Type: Spark; Host: spark://spark-master; Port: 7077 -> Save. 
+
+The smtp part of the airflow config file looks like this, with `smtp_user` and `smtp_mail_from` all set as your email address, and `smtp_password` set as the app key generated from the previous url:
+```cfg
+[smtp]
+
+# If you want airflow to send emails on retries, failure, and you want to use
+# the airflow.utils.email.send_email_smtp function, you have to configure an
+# smtp server here
+smtp_host = smtp.gmail.com
+smtp_starttls = True
+smtp_ssl = False
+smtp_user = your-email@gmail.com
+smtp_password = 1234123412341234
+smtp_port = 587
+smtp_mail_from = your-email@gmail.com
+smtp_timeout = 30
+smtp_retry_limit = 5
+```
+
+After changing the airflow config file, need to restart airflow using `docker-compose restart airflow`. 
+
+To sent a Slack message from an Airflow task, go to "slack.com" -> Create a new workspace -> Create a Workspace -> team name: Airflow test -> (channel name that will receive notifications) airflow-monitoring -> Skip this step (the adding teammates step) -> use Slack in your browser. 
+
+Next, to set up an application, go to "api.slack.com/apps" -> Create an App -> App Name: Airflow (the name under which the slack notifications will be sent); Development Slack Workspace: Airflow test -> Create App -> Incoming Webhooks -> Active Incoming Webhooks (toggle it on) -> Add New Webhook to Workspace -> Where should airflow post: airflow-monitoring (the channel name to receive notifications) -> Allow -> Copy the Webhook URL. It looks like "https://hooks.slack.com/services/..."
+
+Create the Slack connection. In the UI, Admin -> Connections -> + -> Conn Id: (same with defined in the task in the dag) slack_conn; Conn Type: HTTP; Password: (the slack url, looks like https://hooks.slack.com/services/...) -> Save. 
+
+In the command line, test all the tasks: 
 ```console
 # copy the container id of airflow from below
 docker ps
@@ -230,37 +344,18 @@ airflow tasks test forex_data_pipeline is_forex_currencies_file_available 2024-0
 airflow tasks test forex_data_pipeline downloading_rates 2024-01-01
 
 airflow tasks test forex_data_pipeline saving_rates 2024-01-01
+
+airflow tasks test forex_data_pipeline creating_forex_rates_table 2024-01-01
+
+airflow tasks test forex_data_pipeline forex_processing 2024-01-01
+
+airflow tasks test forex_data_pipeline send_email_notification 2024-01-01
+
+airflow tasks test forex_data_pipeline send_slack_notification 2024-01-01
 ```
 
+After setting dependencies, go to the UI -> DAGs -> forex_date_pipeline -> Graph View, and see the graph. 
 
+To trigger the dag, clean up the files that are generated by the task testings first, such as "forex_rates.json"; in Hue, execute "drop table forex_rates"; 
 
-
-## Download the forex rates from the API - PythonOperator
-
-
-## Save the forex rates into HDFS - BashOperator
-
-
-## Create the Hive table forex_rates - HiveOperator
-
-
-## Process the forex rates with Spark - SparkSubmitOperator
-
-
-## Send email notifications - EmailOperator
-
-
-## Send Slack notifications - SlackWebhookOperator
-
-
-## Add dependencies between tasks
-
-
-## The Forex Data Pipeline in action!
-
-
-
-
-
-
-
+In the DAGs page, turn on the toggle before the "forex_data_pipeline", to turn on the dag. It will start to run immediately. 
