@@ -11,8 +11,9 @@ so-called "execution_date" = when the dag actually started to run - schedule_int
 For example, a dag with a start_date of today midnight, with a interval of 1 hr, its first run is 1am today, but this run's declared execution_date is today midnight. 
 
 ## Manipulating the start_date with schedule_interval
+skipped. 
 
-
+In the dag's Tree View, can see the run history, their execution time, actual started/ended time, and the scheduled-to-run-at time. The latter two doesn't have to be same. 
 
 ## Backfill and Catchup
 
