@@ -25,8 +25,9 @@ This catchup parameter can be set at the dag level or can be set globally using 
 The val of this param depends on your use case. There is no best practice. Note that if it is set to True, you may end with many dag runs at the same time, with may cause performance issues. 
 
 ## Catching up non triggered DAGRuns
+Note that you can still use the "airflow backfill" command in the cli to manually do the backfill, no matter the val of the "catchup" parameter. e.g., `airflow backfill -s 2024-01-20 -e 2024-01-25 --rerun_failed_tasks -B my_dag_name` reruns the failed dags between 20th and 25th. `-B` (backwards) forces the backfill to run tasks starting from the recent days in first. 
 
-
+Even if the catchup is set to false, when the dag is resumed, the one latest missed dag run will be triggered (Airflow default behavior). 
 
 ## Dealing with timezones in Airflow
 
