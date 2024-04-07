@@ -16,8 +16,13 @@ skipped.
 In the dag's Tree View, can see the run history, their execution time, actual started/ended time, and the scheduled-to-run-at time. The latter two doesn't have to be same. 
 
 ## Backfill and Catchup
+Sometimes, a task fails, so you need to stop the task scheduling and work on a fix. During this time, the DAG won't be triggered, and will start accumulating delay. 
 
+By default, the catchup param is set to True. e.g., a dag is scheduled to run daily, it ran on day 1, but then got suspended, when it finally got resumed on day 4, the runs that are scheduled to run on day 2 and 3 will also be run. 
 
+This catchup parameter can be set at the dag level or can be set globally using the "catchup_by_default" param in the "airflow.cfg" file. 
+
+The val of this param depends on your use case. There is no best practice. Note that if it is set to True, you may end with many dag runs at the same time, with may cause performance issues. 
 
 ## Catching up non triggered DAGRuns
 
