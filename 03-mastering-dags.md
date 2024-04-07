@@ -46,14 +46,17 @@ Set "depends_on_past" to True if you want to run the task only if its last run w
 
 `wait_for_downstream`. It is applied a task level. But can also be defined in the default_args dict, to apply to all tasks. Enforce the run of a task to wait until its prv run's immediate downstream tasks to finish. This is useful if the different instances of a task X alter the same asset, and this asset is used by tasks downstream of task X. Note that depends_on_past is forced to True wherever wait_for_downstream is used. Also note that only tasks immediately downstream of the previous task instance are waited for; the statuses of any tasks further downstream are ignored.
 
-
 ## Creating task dependencies between DagRuns
+In the "03-dags/04-depends_dag.py", if in the code for task 2, raise an exception, run it, make 2nd task fail. Then in this task's next run, it will have no status. But as long as you manually mark the prv task 2 run as success, the current run of task 2 will start immediately. 
 
-
+To re-run a failed task, click on the task in the Tree View, and click "Clear". The refresh the page, and verify the tasks run starts. 
 
 ## How to structure your DAG folder
+Method 1: You can create a zip file, packaging your dags ant its unpacked extra files. The dags must be in the root of the zip file. Airflow will scan and load the zip file for dags. If module dependencies needed, use venv and pip. 
 
+Method 2: DagBag. A DagBag is a collection of dags, parsed out of a folder tree, and has a high-level config settings. By default, when you start Airflow, a DagBag is created, using the executor and dags folder. With this, you can load dags from different folders, and not from only the default one. 
 
+In the dags folder, ".airflowignore" file specifies the dirs/files in the dags folder that Airflow should ignore. It scope is current dir and is subfolders. It is best practice to have this file. 
 
 ## Organizing your DAGs folder
 
