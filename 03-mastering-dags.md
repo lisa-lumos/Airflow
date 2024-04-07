@@ -30,15 +30,21 @@ Note that you can still use the "airflow backfill" command in the cli to manuall
 Even if the catchup is set to false, when the dag is resumed, the one latest missed dag run will be triggered (Airflow default behavior). 
 
 ## Dealing with timezones in Airflow
+As a best practice, always use aware datetime objects (aks with timezone specified). Use the "airflow.timezone" functions to create aware datetime objects. Because default datetime object in Python is naive (with no timezone). 
 
-
+Airflow datetime info is stored in UTC, same as what is shown in the UI. 
 
 ## Making your DAGs timezone aware
-
-
+To handle DST, refer to the commented out code in "03-dags/03-tz_dag.py". Note that with the commented code, the dag will always start at 2am local timezone (this is if catchup is set to true, otherwise the 2am run when DST happens will be skipped). But if you use timedelta here, it will always respect the 24 hrs of time diff. 
 
 ## How to make your tasks dependent
+Create task dependencies between the current dag run and the prev dag run. 
 
+`depends_on_past`. Default val: False. It is applied a task level. But can also be defined in the default_args dict, to apply to all tasks. Assume for a dag, with tasks a, b, c. At the 1st run, all tasks finished successfully. At the 2nd run, task b failed, so the task c also failed with the status "upstream_failed". Now you want to prevent task b from running in the 3rd dag run, if this task failed in the prv run. 
+
+Set "depends_on_past" to True if you want to run the task only if its last run was successful. 
+
+`wait_for_downstream`. It is applied a task level. But can also be defined in the default_args dict, to apply to all tasks. Enforce the run of a task to wait until its prv run's immediate downstream tasks to finish. This is useful if the different instances of a task X alter the same asset, and this asset is used by tasks downstream of task X. Note that depends_on_past is forced to True wherever wait_for_downstream is used. Also note that only tasks immediately downstream of the previous task instance are waited for; the statuses of any tasks further downstream are ignored.
 
 
 ## Creating task dependencies between DagRuns
