@@ -59,8 +59,7 @@ Method 2: DagBag. A DagBag is a collection of dags, parsed out of a folder tree,
 In the dags folder, ".airflowignore" file specifies the dirs/files in the dags folder that Airflow should ignore. It scope is current dir and is subfolders. It is best practice to have this file. 
 
 ## Organizing your DAGs folder
-
-
+For example, you can put your functions in "dags/functions/helpers.py", adding an empty file "dags/functions/__init__.py" and refer to it using `from functions.helpers import ...` for a dag that lives inside the "dags" folder. 
 
 ## How the Web Server works
 
