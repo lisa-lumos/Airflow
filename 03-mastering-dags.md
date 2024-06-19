@@ -62,8 +62,9 @@ In the dags folder, ".airflowignore" file specifies the dirs/files in the dags f
 For example, you can put your functions in "dags/functions/helpers.py", adding an empty file "dags/functions/__init__.py" and refer to it using `from functions.helpers import ...` for a dag that lives inside the "dags" folder. 
 
 ## How the Web Server works
+When you start the web server from the cli, you start a Gunicorn server using the Python web framework Flask. Gunicorn is a Python http server for unix, based on the pre-fork worker model. Which means that there is a central master process that manages a set of forked worker (the workers than handles requests and responses from the web server of Airflow, not the workers executing the tasks of your DAGs) processes. The master process is a loop listening for various process signals, and reacts accordingly, to manage a list of running workers. These workers are responsible for parsing DAGs in the "dags" folder, and handling requests and returning a response to the client. 
 
-
+As a best practice, use 2 * num_of_cores +1 as the number of web server's workers. 
 
 ## How to deal with failures in your DAGs
 
