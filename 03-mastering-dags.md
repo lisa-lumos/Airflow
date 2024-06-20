@@ -67,8 +67,25 @@ When you start the web server from the cli, you start a Gunicorn server using th
 As a best practice, use 2 * num_of_cores +1 as the number of web server's workers. 
 
 ## How to deal with failures in your DAGs
+Dag level parameters:
+- `dagrun_timeout`: how long a dag run should be up, before timing out, so that new dag runs can be created. Only effective for scheduled runs, so won't work if you manually trigger the DAG. 
+- `max_active_runs`: allow you to fix the max number of active DAG runs per dag. 
+- `sla_miss_callback`: allows to call a function, when reporting SLA timeouts. 
+- `on_failure_callback`
+- `on_success_callback`
 
-
+Task level parameters:
+- email
+- email_on_failure
+- email_on_retry
+- retries
+- retry_delay
+- retry_exponential_backoff
+- max_retry_delay
+- execution_timeout
+- on_failure_callback
+- on_success_callback
+- on_retry_callback
 
 ## Retry and Alerting
 
