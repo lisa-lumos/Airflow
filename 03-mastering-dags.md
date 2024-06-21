@@ -88,43 +88,10 @@ Task level parameters:
 - on_retry_callback
 
 ## Retry and Alerting
-
-
+skipped.
 
 ## How to test your DAGs
-
-
+skipped.
 
 ## Unit testing your DAGs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+skipped.
