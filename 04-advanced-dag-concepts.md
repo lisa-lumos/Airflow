@@ -89,7 +89,13 @@ To make them run concurrently, use the `CeleryExecutor()`.
 When you go to Tree View, you can see that the SubDags are depicted as a task in your parent DAG, and not as a graph of tasks. This is why deadlocks might happen. A subdag is an abstraction of tasks, but still behaves as a task. 
 
 ## Making different paths in your DAGs with Branching
+You can choose between different tasks, according to a value. 
 
+Assume you need to localize IP addresses using an IP-geolocation API. You have a "Check APIs" task, which checks a list of APIs to see which one is currently available to query. Depending on the result, the task the queries that particular API will be executed. 
+
+This is done by suing the BranchPythonOperator that returns the task_id of the task to execute next. 
+
+You should not have an empty path when you use this operator. Add a dummy task if needed. 
 
 ## [Practice] Make Your First Conditional Task Using Branching
 
