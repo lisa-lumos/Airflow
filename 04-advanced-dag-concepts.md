@@ -97,68 +97,17 @@ This is done by suing the BranchPythonOperator that returns the task_id of the t
 
 You should not have an empty path when you use this operator. Add a dummy task if needed. 
 
-## [Practice] Make Your First Conditional Task Using Branching
-
-
 ## Trigger rules for your tasks
-
-
-## [Practice] Changing how your tasks are triggered
-
+skipped
 
 ## Avoid hard coding values with Variables, Macros and Templates
-
-
-## [Practice] Templating your tasks
-
+skipped
 
 ## How to share data between your tasks with XCOMs
-
-
-## [Practice] Sharing (big?) data with XCOMs
-
+skipped
 
 ## TriggerDagRunOperator or when your DAG controls another DAG
-
-
-## [Practice] Trigger a DAG from another DAG
-
+skipped
 
 ## Dependencies between your DAGs with the ExternalTaskSensor
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+skipped
